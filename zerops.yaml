@@ -1,84 +1,73 @@
 zerops:
-  project:
-    name: Uptime-App
+  - setup: api
+    build:
+      base: go@1
+      buildCommands:
+        - mkdir -p bin
+        - go build -ldflags="-s -w" -o bin/api ./cmd/api
+        - go install github.com/pressly/goose/v3/cmd/goose@v3.26.0
+        - cp $(go env GOPATH)/bin/goose bin/goose
+      deployFiles:
+        - bin/api
+        - bin/goose
+        - migrations
+      cache:
+        - .go/pkg/mod
+    run:
+      base: go@1
+      envVariables:
+        DATABASE_URL: ${postgresql_connectionString}
+        NATS_URL: nats://nats:4222
+        PORT: "8080"
+        GIN_MODE: release
+        JWT_SECRET: change-me-to-a-long-random-string
+      ports:
+        - port: 8080
+          httpSupport: true
+          zeropsSubdomain: api
+      initCommands:
+        - ./bin/goose -dir ./migrations postgres "$DATABASE_URL" up
+      start: ./bin/api
 
-  - services:
-      - id: postgres
-        type: postgresql@17
-        mode: HA
-        priority: 1
+  - setup: worker
+    build:
+      base: go@1
+      buildCommands:
+        - mkdir -p bin
+        - go build -ldflags="-s -w" -o bin/worker ./cmd/worker
+      deployFiles:
+        - bin/worker
+      cache:
+        - .go/pkg/mod
+    run:
+      base: go@1
+      envVariables:
+        DATABASE_URL: ${postgresql_connectionString}
+        NATS_URL: nats://nats:4222
+      start: ./bin/worker
 
-  - services:
-      - id: nats
-        image: nats:2.10-alpine
-        ports:
-          - port: 4222
-            protocol: TCP
-
-  - services:
-      - id: migrate
-        buildFrom:
-          dockerfile: Dockerfile
-          context: .
-          target: migrate
-        run:
-          command: ["up"]
-          maxRestarts: 1
-        envSecrets:
-          DATABASE_URL: ${postgres_connection_string}
-
-  - services:
-      - id: api
-        buildFrom:
-          dockerfile: Dockerfile
-          context: .
-          target: api
-        ports:
-          - port: 8080
-            protocol: HTTP
-        env:
-          PORT: "8080"
-          GIN_MODE: release
-          NATS_URL: nats://nats:4222
-        envSecrets:
-          DATABASE_URL: ${postgres_connection_string}
-          JWT_SECRET: ${jwt_secret}
-        healthCheck:
-          http:
-            port: 8080
-            path: /api/status
-            interval: 10
-            timeout: 5
-        scale:
-          minContainers: 1
-          maxContainers: 3
-
-  - services:
-      - id: worker
-        buildFrom:
-          dockerfile: Dockerfile
-          context: .
-          target: worker
-        envSecrets:
-          DATABASE_URL: ${postgres_connection_string}
-          RESEND_API_KEY: ${resend_api_key}
-          RESEND_FROM_EMAIL: ${resend_from_email}
-        env:
-          NATS_URL: nats://nats:4222
-        scale:
-          minContainers: 1
-          maxContainers: 4
-
-  - services:
-      - id: frontend
-        buildFrom:
-          dockerfile: frontend/Dockerfile
-          context: frontend
-          buildArgs:
-            NEXT_PUBLIC_API_URL: https://${public_hostname}
-        ports:
-          - port: 3000
-            protocol: HTTP
-        scale:
-          minContainers: 1
-          maxContainers: 3
+  - setup: frontend
+    build:
+      base: nodejs@24
+      os: ubuntu
+      buildCommands:
+        - |
+          cd frontend
+          npm ci
+          npm run build
+      deployFiles:
+        - frontend/package.json
+        - frontend/node_modules
+        - frontend/.next
+        - frontend/public
+    run:
+      base: nodejs@24
+      os: ubuntu
+      envVariables:
+        PORT: "3000"
+        HOSTNAME: 0.0.0.0
+        NEXT_PUBLIC_API_URL: https://api-2dcd.prg1.zerops.app
+      ports:
+        - port: 3000
+          httpSupport: true
+      start: cd frontend && npm run start

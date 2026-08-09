@@ -1,6 +1,6 @@
 import axios from "axios"
 
-const configuredApiURL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080"
+const configuredApiURL = process.env.NEXT_PUBLIC_API_URL ?? ""
 export const apiURL = configuredApiURL.replace(/\/$/, "")
 
 export const apiClient = axios.create({
