@@ -50,23 +50,29 @@ zerops:
     build:
       base: nodejs@24
       os: ubuntu
+      # NEXT_PUBLIC_* must be present at build time — Next.js inlines these
+      # into the client bundle. Declaring them only in run.envVariables leaves
+      # them undefined in the browser, which breaks monitor creation and SSE.
+      envVariables:
+        NEXT_PUBLIC_API_URL: https://api-2dcd-8080.prg1.zerops.app
       buildCommands:
-        - |
-          cd frontend
-          npm ci
-          npm run build
+        - cd frontend
+        - npm ci
+        - npm run build
       deployFiles:
         - frontend/package.json
         - frontend/node_modules
         - frontend/.next
         - frontend/public
+      cache:
+        - frontend/node_modules
+        - frontend/.next/cache
     run:
       base: nodejs@24
       os: ubuntu
       envVariables:
         PORT: "3000"
         HOSTNAME: 0.0.0.0
-        NEXT_PUBLIC_API_URL: https://api-2dcd-8080.prg1.zerops.app
       ports:
         - port: 3000
           httpSupport: true

@@ -1,0 +1,10 @@
+zerops:
+  - setup: frontend
+    run:
+      ports:
+        - port: 3000
+          httpSupport: true
+      envVariables:
+        PORT: "3000"
+        HOSTNAME: 0.0.0.0
+      start: cd frontend/.next/standalone && node server.js

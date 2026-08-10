@@ -1,0 +1,40 @@
+#yamlPreprocessor=on
+project:
+  name: Uptime-App
+  corePackage: SERIOUS
+
+services:
+  # Managed PostgreSQL Database
+  - hostname: postgres
+    type: postgresql@17
+    mode: HA
+
+  # Native Managed NATS Service
+  - hostname: nats
+    type: nats@2.10
+    mode: NON_HA
+
+  # Go API Service Slot
+  - hostname: api
+    type: go@1
+    mode: HA
+    minContainers: 1
+    maxContainers: 3
+    enableSubdomainAccess: true
+    envSecrets:
+      JWT_SECRET: <@generateRandomString(<64>)>
+
+  # Go Worker Service Slot
+  - hostname: worker
+    type: go@1
+    mode: NON_HA
+    minContainers: 1
+    maxContainers: 4
+
+  # Frontend Service Slot
+  - hostname: frontend
+    type: nodejs@22
+    mode: HA
+    minContainers: 1
+    maxContainers: 3
+    enableSubdomainAccess: true

@@ -1,0 +1,6 @@
+services:
+  - hostname: frontend
+    type: nodejs@24
+    minContainers: 1
+    maxContainers: 3
+    enableSubdomainAccess: true

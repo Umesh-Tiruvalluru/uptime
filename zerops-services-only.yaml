@@ -1,0 +1,13 @@
+services:
+  # Native Managed NATS Service
+  - hostname: nats
+    type: nats@2.12
+
+  # Go Worker Service Slot
+  - hostname: worker
+    type: go@latest
+
+  # Frontend Service Slot
+  - hostname: frontend
+    type: nodejs@latest
+    enableSubdomainAccess: true
